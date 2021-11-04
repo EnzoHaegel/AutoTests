@@ -10,13 +10,13 @@ def usage(nb, reason=""):
         print("\033[91mError: " + reason + "\033[0m")
     print("USAGE")
     print("\ttestAutomated [name of test] [Executable] [Args]", end="\n\n")
-    print("Permet la création de tests automatiques")
+    print("Permet la création de tests automatiques\n")
     print("\ttestAutomated binary")
     print("Permet de run les tests sur le binaire binary")
     exit(nb)
 
 
-def getFirstChange(text, compare):
+def printFirstChange(text, compare):
     compare = compare.split("\n")
     for i in range(len(text)):
         if text[i].replace("\n", "") != compare[i]:
@@ -30,13 +30,15 @@ def runTests(exe):
     filesList = checkFilesTests()
     for file in filesList:
         content = getFileContent("specs/" + file)
-        if launchCommand([exe] + content[0].replace('\n', '').split(" ")) == "".join(content):
+        createTest(["tmp", exe] + content[0].replace('\n', '').split(" "))
+        got = getFileContent("specs/tmp.txt")
+        os.remove("specs/tmp.txt")
+        if got == content:
             passed += 1
             print(file + ": \033[92mPASSED\033[0m")
         else:
             print(file + ": \033[91mFAILED\033[0m")
-            getFirstChange(content, launchCommand(
-                [exe] + content[0].replace('\n', '').split(" ")))
+            printFirstChange(content, got)
     printResults(passed, filesList)
 
 
@@ -70,15 +72,15 @@ def main():
     if len(sys.argv) == 2:
         runTests(sys.argv[1])
     if len(sys.argv) < 3:
-        usage(1)
-    createTest()
+        usage(1, "Bad number of arguments")
+    createTest(sys.argv[1:])
     return 0
 
 
-def createTest():
-    createFile()
-    text = launchCommand(sys.argv[2:])
-    f = open("specs/" + sys.argv[1] + ".txt", "a")
+def createTest(args):
+    createFile(args[0])
+    text = launchCommand(args[1:])
+    f = open("specs/" + args[0] + ".txt", "a")
     f.write(text)
     f.close()
 
@@ -93,14 +95,15 @@ def launchCommand(args):
     except subprocess.CalledProcessError:
         print(res)
         pass
-    return ' '.join(arguments) + '\n' + str(ret) + '\n' + res
+    return (' '.join(arguments) + '\n' + str(ret) + '\n' + res)
 
 
-def createFile():
-    os.system("mkdir specs")
-    if os.path.isfile("specs/"+sys.argv[1]):
+def createFile(filename):
+    if not os.path.isdir("specs"):
+        os.system("mkdir specs")
+    if os.path.isfile("specs/"+filename):
         usage(1, "Name of test already exist")
-    os.system("touch specs/" + sys.argv[1] + ".txt")
+    os.system("touch specs/" + filename + ".txt")
 
 
 if __name__ == "__main__":
